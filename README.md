@@ -1,0 +1,2 @@
+# BilgisayarliGoruIleIsSahasiGuvenligi
+ 
