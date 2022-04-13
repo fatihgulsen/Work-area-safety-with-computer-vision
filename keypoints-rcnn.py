@@ -7,10 +7,6 @@ import time
 from PIL import Image
 from torchvision.transforms import transforms as transforms
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-i', '--input', required=True,
-                    help='path to the input data')
-args = vars(parser.parse_args())
 # transform to convert the image to tensor
 transform = transforms.Compose([
     transforms.ToTensor()
@@ -23,42 +19,24 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # load the modle on to the computation device and set to eval mode
 model.to(device).eval()
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-i', '--input', required=True,
-                    help='path to the input data')
-args = vars(parser.parse_args())
-# transform to convert the image to tensor
-transform = transforms.Compose([
-    transforms.ToTensor()
-])
-# initialize the model
-model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True,
-                                                               num_keypoints=17)
-# set the computation device
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# load the modle on to the computation device and set to eval mode
-model.to(device).eval()
-
-cap = cv2.VideoCapture(args['input'])
-if (cap.isOpened() == False):
+cap = cv2.VideoCapture('SampleVideo/video1.mp4')
+if not cap.isOpened():
     print('Error while trying to read video. Please check path again')
 # get the video frames' width and height
 frame_width = int(cap.get(3))
 frame_height = int(cap.get(4))
 # set the save path
-save_path = f"../outputs/{args['input'].split('/')[-1].split('.')[0]}.mp4"
+
 # define codec and create VideoWriter object
-out = cv2.VideoWriter(save_path,
-                      cv2.VideoWriter_fourcc(*'mp4v'), 20,
-                      (frame_width, frame_height))
+
 frame_count = 0  # to count total frames
 total_fps = 0  # to get the final frames per second
-
+pTime = 0
 # read until end of video
-while (cap.isOpened()):
+while cap.isOpened():
     # capture each frame of the video
     ret, frame = cap.read()
-    if ret == True:
+    if ret:
 
         pil_image = Image.fromarray(frame).convert('RGB')
         orig_frame = frame
@@ -86,10 +64,9 @@ while (cap.isOpened()):
         pTime = cTime
 
         cv2.putText(output_image, str(int(fps)), (70, 50), cv2.FONT_HERSHEY_PLAIN, 3,
-                (255, 0, 0), 3)
+                    (255, 0, 0), 3)
 
         cv2.imshow('Pose detection frame', output_image)
-        out.write(output_image)
         # press `q` to exit
         if cv2.waitKey(wait_time) & 0xFF == ord('q'):
             break
