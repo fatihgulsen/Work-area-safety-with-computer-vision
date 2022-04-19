@@ -8,14 +8,13 @@ import matplotlib
 import numpy as np
 
 
-
 class KeypointsRCNN:
 
-    def __init__(self):
-        self.model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True,
-                                                                            num_keypoints=17)
+    def __init__(self, min_size: int = 500):
 
-        self.trasform = transforms.Compose([transforms.ToTensor()])
+        self.model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True,
+                                                                            num_keypoints=17, min_size=min_size)
+        self.transform = transforms.Compose([transforms.ToTensor()])
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.frame_count = 0
@@ -27,6 +26,8 @@ class KeypointsRCNN:
             (5, 7), (7, 9), (5, 11), (11, 13), (13, 15), (6, 12),
             (12, 14), (14, 16), (5, 6)
         ]
+
+        self.outputs = None
 
     def video_detection(self, video_dir: str):
         cap = cv2.VideoCapture(video_dir)
@@ -42,10 +43,10 @@ class KeypointsRCNN:
                 image, orig_frame = self.__image_trasform(frame)
                 start_time = time.time()
                 with torch.no_grad():
-                    outputs = self.model(image)
+                    self.outputs = self.model(image)
 
                 end_time = time.time()
-                output_image = self.__draw_keypoints(outputs, orig_frame)
+                output_image = self.__draw_keypoints(self.outputs, orig_frame)
 
                 fps = 1 / (end_time - start_time)
 
@@ -82,35 +83,41 @@ class KeypointsRCNN:
         image = image.unsqueeze(0).to(self.device)
         return image, orig_frame
 
-    def __draw_keypoints(self,outputs, image):
-        # the `outputs` is list which in-turn contains the dictionaries
+    def __draw_keypoints(self, outputs, image):
+
         for i in range(len(outputs[0]['keypoints'])):
+
             keypoints = outputs[0]['keypoints'][i].cpu().detach().numpy()
-            # proceed to draw the lines if the confidence score is above 0.9
+
+            boxes = outputs[0]['boxes'][i].cpu().detach().numpy()
+
             if outputs[0]['scores'][i] > 0.9:
                 keypoints = keypoints[:, :].reshape(-1, 3)
                 for p in range(keypoints.shape[0]):
-                    # draw the keypoints
+
                     cv2.circle(image, (int(keypoints[p, 0]), int(keypoints[p, 1])),
                                3, (0, 0, 255), thickness=-1, lineType=cv2.FILLED)
-                    # uncomment the following lines if you want to put keypoint number
                     cv2.putText(image, f"{p}", (int(keypoints[p, 0] + 10), int(keypoints[p, 1] - 5)),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+
                 for ie, e in enumerate(self.edges):
-                    # get different colors for the edges
+
                     rgb = matplotlib.colors.hsv_to_rgb([
                         ie / float(len(self.edges)), 1.0, 1.0
                     ])
                     rgb = rgb * 255
-                    # join the keypoint pairs to draw the skeletal structure
+
                     try:
                         cv2.line(image, (keypoints[e, 0][0], keypoints[e, 1][0]),
                                  (keypoints[e, 0][1], keypoints[e, 1][1]),
                                  tuple(rgb), 2, lineType=cv2.LINE_AA)
-                    except Exception as e:
-                        print(e)
-                        continue
+                    except:
+                        pass
 
+                cv2.rectangle(image, (int(boxes[0]), int(boxes[1])), (int(boxes[2]), int(boxes[3])),
+                              color=(0, 255, 0),
+                              thickness=2)
             else:
                 continue
         return image
+
