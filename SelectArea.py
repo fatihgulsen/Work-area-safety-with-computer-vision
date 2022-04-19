@@ -15,6 +15,7 @@ posList = []
 
 
 def fileAppend(r):
+    r = list(dict.fromkeys(r))
     posList.append(r)
     with open(file_name, 'wb') as f:
         pickle.dump(posList, f)
@@ -32,7 +33,7 @@ while video_capture.isOpened():
         if posList:
             for pos in posList:
                 cv2.rectangle(img, (int(pos[0]), int(pos[1])), (int(pos[0] + pos[2]), int(pos[1] + pos[3])),
-                              (255, 0, 255), 2)
+                              (0, 0, 255), 2)
         r = cv2.selectROIs("select the area", img, fromCenter=False)  # [Top_X, Top_Y, Bottom_X, Bottom_Y]
         print(r)
 
