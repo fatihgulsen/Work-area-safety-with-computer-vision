@@ -11,33 +11,28 @@ import numpy as np
 class KeypointsRCNN:
 
     def __init__(self, min_size: int = 500):
-
         self.model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True,
                                                                             num_keypoints=17, min_size=min_size)
         self.transform = transforms.Compose([transforms.ToTensor()])
-
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.frame_count = 0
         self.total_fps = 0
         self.pTime = 0
-
+        self.model.to(self.device).eval()
         self.edges = [
             (0, 1), (0, 2), (2, 4), (1, 3), (6, 8), (8, 10),
             (5, 7), (7, 9), (5, 11), (11, 13), (13, 15), (6, 12),
             (12, 14), (14, 16), (5, 6)
         ]
-
         self.outputs = None
 
     def video_detection(self, video_dir: str):
         cap = cv2.VideoCapture(video_dir)
         if not cap.isOpened():
             print('Error while trying to read video. Please check path again')
-
         frame_width = int(cap.get(3))
         frame_height = int(cap.get(4))
         while cap.isOpened():
-
             ret, frame = cap.read()
             if ret:
                 image, orig_frame = self.__image_trasform(frame)
@@ -68,11 +63,8 @@ class KeypointsRCNN:
                     break
             else:
                 break
-
         cap.release()
-
         cv2.destroyAllWindows()
-
         avg_fps = self.total_fps / self.frame_count
         print(f"Average FPS: {avg_fps:.3f}")
 
