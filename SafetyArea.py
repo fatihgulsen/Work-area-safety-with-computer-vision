@@ -34,21 +34,30 @@ class SafetyArea:
             ret, self.frame = cap.read()
             if ret:
                 start_time = time.time()
-
                 orig_frame = self.__draw_area(self.area_list, self.frame)
                 output_image = orig_frame
-                if Keypoints:
-                    self.keypointsOutput = self.keypointsDetector.get_prediction(self.frame)
-                    output_image = self.__draw_keypoints(output_image, self.keypointsOutput)
+                try:
+                    if Keypoints:
+                        self.keypointsOutput = self.keypointsDetector.get_prediction(self.frame)
+                        output_image = self.__draw_keypoints(output_image, self.keypointsOutput)
+                except Exception as e:
+                    print(e)
+                    pass
+                try:
+                    if Mask:
+                        self.masks, self.pred_boxes, self.pred_class = self.maskDetector.get_prediction(self.frame, 0.8)
+                        output_image = self.__draw_masks(output_image, self.masks, self.pred_boxes, self.pred_class)
+                except Exception as e:
+                    print(e)
+                    pass
 
-                if Mask:
-                    self.masks, self.pred_boxes, self.pred_class = self.maskDetector.get_prediction(self.frame,0.7)
-                    output_image = self.__draw_masks(output_image, self.masks, self.pred_boxes, self.pred_class)
                 cv2.imshow('Pose detection frame', output_image)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
             else:
                 break
+        cap.release()
+        cv2.destroyAllWindows()
         pass
 
     def setup_area(self):
@@ -95,56 +104,48 @@ class SafetyArea:
         except Exception as e:
             self.area_list = []
 
-    def __area_control(self, area_list, pos_list, image):
+    def __area_control(self, area_list, pos_list):
         # print('Area')
         # print((ax1, ay1, ax2, ay2))
         # print('Pos')
         # print((px1, py1))
-        if area_list:
-            for area in area_list:
-                (ax1, ay1, ax2, ay2) = area
+        (px1, py1) = pos_list
+        # print(pos_list)
+        for area in area_list:
+            (x, y, w, h) = area  # ( x,y,w,h)
+            # print(area)
+            if (x <= px1 <= x + w) and (y <= py1 <= y + h):
+                # print('inside')
+                # print(pos_list)
                 # print(area)
-                if pos_list.all():
-                    for pos in pos_list:
-                        (px1, py1, dummy) = pos
-                        # print(pos)
-                        if (ax2 <= px1 <= ax1) and (ay2 <= py1 <= ay1):
-                            print(' inside ')
-                            print(pos)
-                            print(area)
-                        if (ax1 <= px1 <= ax2) and (ay2 <= py1 <= ay1):
-                            print(' 2 inside')
-                            print(pos)
-                            print(area)
-                        elif (ax2 <= px1 <= ax1) and (ay1 <= py1 <= ay2):
-                            print(' 3 inside')
-                            print(pos)
-                            print(area)
-                        elif (ax1 <= px1 <= ax2) and (ay1 <= py1 <= ay2):
-                            print(' 4  inside')
-                            print(pos)
-                            print(area)
-                        else:
-                            # print('not')
-                            # print(pos)
-                            # print(area)
-                            pass
-
+                return True
+                pass
         pass
 
     def __draw_keypoints(self, image, outputs):
         for i in range(len(outputs[0]['keypoints'])):
             if outputs[0]['scores'][i] > 0.9:
-
                 keypoints = outputs[0]['keypoints'][i].cpu().detach().numpy()
-                boxes = outputs[0]['boxes'][i].cpu().detach().numpy()
 
                 keypoints = keypoints[:, :].reshape(-1, 3)
                 for p in range(keypoints.shape[0]):
+                    inside = False
+                    if p == 15 or p == 16:
+                        inside = self.__area_control(self.area_list, (int(keypoints[p, 0]), int(keypoints[p, 1])))
+
+                    if inside:
+                        renk = (0, 255, 255)
+                        text = f"{p} , inside"
+                    else:
+                        renk = (0, 0, 255)
+                        text = f"{p}"
+
                     cv2.circle(image, (int(keypoints[p, 0]), int(keypoints[p, 1])),
-                               3, (0, 0, 255), thickness=-1, lineType=cv2.FILLED)
-                    cv2.putText(image, f"{p}", (int(keypoints[p, 0] + 10), int(keypoints[p, 1] - 5)),
+                               3, renk, thickness=-1, lineType=cv2.FILLED)
+
+                    cv2.putText(image, text, (int(keypoints[p, 0] + 10), int(keypoints[p, 1] - 5)),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+
                 for ie, e in enumerate(self.edges):
                     rgb = matplotlib.colors.hsv_to_rgb([
                         ie / float(len(self.edges)), 1.0, 1.0
@@ -153,6 +154,7 @@ class SafetyArea:
                     cv2.line(img=image, pt1=(int(keypoints[e, 0][0]), int(keypoints[e, 1][0])),
                              pt2=(int(keypoints[e, 0][1]), int(keypoints[e, 1][1])),
                              color=tuple(rgb), thickness=2, lineType=cv2.LINE_AA)
+
                 # cv2.rectangle(image, (int(boxes[0]), int(boxes[1])), (int(boxes[2]), int(boxes[3])),
                 #               color=(0, 255, 0),
                 #               thickness=2)
