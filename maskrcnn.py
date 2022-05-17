@@ -30,9 +30,12 @@ COCO_INSTANCE_CATEGORY_NAMES = [
 
 class MaskRCNN:
 
-    def __init__(self):
+    def __init__(self,GPU=True):
         self.model = torchvision.models.detection.maskrcnn_resnet50_fpn(pretrained=True)
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if GPU:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        else:
+            self.device = torch.device('cpu')
         self.model.to(self.device).eval()
         self.transform = transforms.Compose([transforms.ToTensor()])
         pass

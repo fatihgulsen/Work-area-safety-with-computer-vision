@@ -4,7 +4,7 @@ from maskrcnn import *
 
 class SafetyArea:
 
-    def __init__(self, video_dir: str):
+    def __init__(self, video_dir: str, GPU=True):
         self.area_list = None
         self.video_dir = video_dir
         self.file_name = os.path.basename(self.video_dir).split('.')[0]
@@ -15,14 +15,17 @@ class SafetyArea:
             (5, 7), (7, 9), (5, 11), (11, 13), (13, 15), (6, 12),
             (12, 14), (14, 16), (5, 6)
         ]
-        self.keypointsDetector = KeypointsRCNN()
+        self.keypointsDetector = KeypointsRCNN(GPU=GPU)
         self.keypointsOutput = None
 
-        self.maskDetector = MaskRCNN()
+        self.maskDetector = MaskRCNN(GPU=GPU)
         self.masks = None
         self.pred_boxes = None
         self.pred_class = None
         self.frame = None
+        self.total_fps = 0
+        self.frame_count = 0
+        self.pTime = 0
         pass
 
     def video_detection(self, Keypoints=True, Mask=True):
@@ -51,6 +54,19 @@ class SafetyArea:
                     print(e)
                     pass
 
+                end_time = time.time()
+                fps = 1 / (end_time - start_time)
+                self.total_fps += fps
+                self.frame_count += 1
+                wait_time = max(1, int(fps / 4))
+
+                cTime = time.time()
+                fps = 1 / (cTime - self.pTime)
+                self.pTime = cTime
+
+                cv2.putText(output_image, str(int(fps)), (70, 50), cv2.FONT_HERSHEY_PLAIN, 3,
+                            (255, 0, 0), 3)
+
                 cv2.imshow('Pose detection frame', output_image)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
@@ -58,6 +74,8 @@ class SafetyArea:
                 break
         cap.release()
         cv2.destroyAllWindows()
+        avg_fps = self.total_fps / self.frame_count
+        print(f"Average FPS: {avg_fps:.3f}")
         pass
 
     def setup_area(self):
@@ -134,17 +152,17 @@ class SafetyArea:
                         inside = self.__area_control(self.area_list, (int(keypoints[p, 0]), int(keypoints[p, 1])))
 
                     if inside:
-                        renk = (0, 255, 255)
                         text = f"{p} , inside"
+                        cv2.putText(image, 'inside area', (20, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
+
                     else:
-                        renk = (0, 0, 255)
                         text = f"{p}"
 
                     cv2.circle(image, (int(keypoints[p, 0]), int(keypoints[p, 1])),
-                               3, renk, thickness=-1, lineType=cv2.FILLED)
+                               3, (0, 0, 255), thickness=-1, lineType=cv2.FILLED)
 
-                    cv2.putText(image, text, (int(keypoints[p, 0] + 10), int(keypoints[p, 1] - 5)),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+                    # cv2.putText(image, text, (int(keypoints[p, 0] + 10), int(keypoints[p, 1] - 5)),
+                    #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)  # keypoints yazıları
 
                 for ie, e in enumerate(self.edges):
                     rgb = matplotlib.colors.hsv_to_rgb([

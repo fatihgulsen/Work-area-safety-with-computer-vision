@@ -12,11 +12,15 @@ import pickle
 
 class KeypointsRCNN:
 
-    def __init__(self, min_size: int = 500):
+    def __init__(self, min_size: int = 500,GPU=True):
         self.model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True,
                                                                             num_keypoints=17, min_size=min_size)
         self.transform = transforms.Compose([transforms.ToTensor()])
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        if GPU:
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        else:
+            self.device = torch.device('cpu')
+
         self.model.to(self.device).eval()
 
     def get_prediction(self, img, threshold=0.9):
