@@ -12,7 +12,7 @@ import pickle
 
 class KeypointsRCNN:
 
-    def __init__(self, min_size: int = 500,GPU=True):
+    def __init__(self, min_size: int = 500, GPU=True):
         self.model = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=True,
                                                                             num_keypoints=17, min_size=min_size)
         self.transform = transforms.Compose([transforms.ToTensor()])
@@ -36,5 +36,3 @@ class KeypointsRCNN:
         image = self.transform(pil_image)
         image = image.unsqueeze(0).to(self.device)
         return image, orig_frame
-
-
