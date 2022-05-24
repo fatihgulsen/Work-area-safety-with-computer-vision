@@ -1,4 +1,4 @@
-# BilgisayarliGoruIleIsSahasiGuvenligi
+# Work area safety with Computer Vision
  
 -t (setup or run) -v (video-dir) -m (0 - mask off or 1 - mask on) 
 
